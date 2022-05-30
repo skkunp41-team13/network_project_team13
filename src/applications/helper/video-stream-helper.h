@@ -122,26 +122,6 @@ public:
   void SetAttribute (std::string name, const AttributeValue &value);
 
   /**
-   * Given a pointer to a UdpEchoClient application, set the data fill of the 
-   * packet (what is sent as data to the server) to the contents of the fill
-   * buffer, repeated as many times as is required.
-   *
-   * Initializing the fill to the contents of a single buffer is accomplished
-   * by providing a complete buffer with fillLength set to your desired 
-   * dataLength
-   *
-   * \warning The size of resulting echo packets will be automatically adjusted
-   * to reflect the dataLength parameter -- this means that the PacketSize
-   * attribute of the Application may be changed as a result of this call.
-   *
-   * \param app Smart pointer to the application (real type must be UdpEchoClient).
-   * \param fill The fill pattern to use when constructing packets.
-   * \param fillLength The number of bytes in the provided fill pattern.
-   * \param dataLength The desired length of the final echo data.
-   */
-  void SetFill (Ptr<Application> app, uint8_t *fill, uint32_t fillLength, uint32_t dataLength);
-
-  /**
    * Create a VideoStreamClientApplication on the specified node.  The Node
    * is provided as a Ptr<Node>.
    *
