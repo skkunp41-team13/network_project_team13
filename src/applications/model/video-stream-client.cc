@@ -52,7 +52,7 @@ namespace ns3
         m_initialDelay = 3;
         m_currentBufferSize = 0;
         m_frameSize = 0;
-        m_frameRate = 25;
+        m_frameRate = 20;
         m_videoLevel = 3;
         m_stopCounter = 0;
         m_lastRecvFrame = 0;
@@ -166,26 +166,24 @@ namespace ns3
         NS_ASSERT(m_sendEvent.IsExpired());
 
         // Server와 Connection을 위해 사용
-        // uint8_t dataBuffer[10];
-        // sprintf((char *)dataBuffer, "%hu", 0);
         Ptr<Packet> firstPacket = Create<Packet>(10);
         m_socket->Send(firstPacket);
 
         if (Ipv4Address::IsMatchingType(m_peerAddress))
         {
-            NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << Ipv4Address::ConvertFrom(m_peerAddress) << " port " << m_peerPort);
+            // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << Ipv4Address::ConvertFrom(m_peerAddress) << " port " << m_peerPort);
         }
         else if (Ipv6Address::IsMatchingType(m_peerAddress))
         {
-            NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << Ipv6Address::ConvertFrom(m_peerAddress) << " port " << m_peerPort);
+            // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << Ipv6Address::ConvertFrom(m_peerAddress) << " port " << m_peerPort);
         }
         else if (InetSocketAddress::IsMatchingType(m_peerAddress))
         {
-            NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << InetSocketAddress::ConvertFrom(m_peerAddress).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(m_peerAddress).GetPort());
+            // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << InetSocketAddress::ConvertFrom(m_peerAddress).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(m_peerAddress).GetPort());
         }
         else if (Inet6SocketAddress::IsMatchingType(m_peerAddress))
         {
-            NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << Inet6SocketAddress::ConvertFrom(m_peerAddress).GetIpv6() << " port " << Inet6SocketAddress::ConvertFrom(m_peerAddress).GetPort());
+            // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client sent 10 bytes to " << Inet6SocketAddress::ConvertFrom(m_peerAddress).GetIpv6() << " port " << Inet6SocketAddress::ConvertFrom(m_peerAddress).GetPort());
         }
     }
 
@@ -202,7 +200,7 @@ namespace ns3
             uint32_t retransSeq = m_retransBuffer.front();
             m_retransBuffer.pop();
             seqTs.SetSeq(retransSeq);
-            NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " retrans request for pkt # " << retransSeq);
+            // NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " retrans request for pkt # " << retransSeq);
             // 패킷에 seq header 붙이기 + 전송
             retransRequestPacket->AddHeader(seqTs);
             m_socket->Send(retransRequestPacket);
@@ -215,23 +213,40 @@ namespace ns3
     uint32_t
     VideoStreamClient::ReadFromBuffer(void)
     {
+        uint32_t count = 0; // 소비했던 프레임 개수
         if (m_frameBufferSize < m_frameRate)
         {
-            NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " not enough frames to consume (frameNumber : " << m_frameBufferSize << ")");
+            // 남아있는 프레임 만큼만 소비하기
+            count = 0;
+            for (uint32_t i = m_frameFront; i < m_frameFront + m_frameBufferSize; i++)
+            {
+                if (m_frameBuffer[i] > 0)
+                {
+                    count += 1;
+                    m_frameBuffer[i] = 0; // i번재 프레임 소비
+                }
+            }
+            m_frameFront = m_frameFront + m_frameBufferSize;             // 사용가능한 프레임의 포인터인덱스 값 조정
+            m_frameBufferSize -= m_frameBufferSize;                      // 소비된 만큼 프레임 버퍼에 저장된 사이즈 줄이기
+            NS_LOG_INFO(Simulator::Now().GetSeconds() << "\t" << count); // 사용한 프레임 개수 출력
             m_bufferEvent = Simulator::Schedule(Seconds(1.0), &VideoStreamClient::ReadFromBuffer, this);
             return (-1); // not consume frame
         }
         else // consume frame
         {
-            // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " s: Play video frames from the buffer");
-
+            // m_frameRate만큼만 소비하기
+            count = 0;
             for (uint32_t i = m_frameFront; i < m_frameFront + m_frameRate; i++)
             {
-                NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " s: video frame #" << i << " sized as " << m_frameBuffer[i] << "bytes is consumed");
-                m_frameBuffer[i] = 0; // i번재 프레임 소비
+                if (m_frameBuffer[i] > 0)
+                {
+                    count += 1;
+                    m_frameBuffer[i] = 0; // i번재 프레임 소비
+                }
             }
-            m_frameFront = m_frameFront + m_frameRate; // 사용가능한 프레임의 포인터인덱스 값 조정
-            m_frameBufferSize -= m_frameRate;          // 소비된 만큼 프레임 버퍼에 저장된 사이즈 줄이기
+            m_frameFront = m_frameFront + m_frameRate;                   // 사용가능한 프레임의 포인터인덱스 값 조정
+            m_frameBufferSize -= m_frameRate;                            // 소비된 만큼 프레임 버퍼에 저장된 사이즈 줄이기
+            NS_LOG_INFO(Simulator::Now().GetSeconds() << "\t" << count); // 사용한 프레임 개수 출력
             m_bufferEvent = Simulator::Schedule(Seconds(1.0), &VideoStreamClient::ReadFromBuffer, this);
             return (m_frameBufferSize);
         }
@@ -257,8 +272,7 @@ namespace ns3
                 seqNum = seqTs.GetSeq();
                 frameNum = seqNum / m_pktsPerFrame;
 
-                // NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum);
-                NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
+                // NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
                 if (m_expectedSeq <= seqNum)
                 {
                     // seq가 연속인 경우
@@ -290,7 +304,7 @@ namespace ns3
                     else
                     {
                         // 새로운 프레임 번호
-                        NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " new frame is saved : " << m_lastRecvFrame);
+                        // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " new frame is saved : " << m_lastRecvFrame);
                         m_frameBuffer[m_lastRecvFrame] = m_frameSize; // 누적된 프레임 등록
                         m_frameBufferSize++;                          // frmaeBuffer에 저장된 프레임개수 증가
                         m_lastRecvFrame = frameNum;                   // frame번호 갱신
