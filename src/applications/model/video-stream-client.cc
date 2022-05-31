@@ -50,7 +50,6 @@ namespace ns3
     {
         NS_LOG_FUNCTION(this);
         m_initialDelay = 3;
-        m_lastBufferSize = 0;
         m_currentBufferSize = 0;
         m_frameSize = 0;
         m_frameRate = 25;
@@ -60,8 +59,10 @@ namespace ns3
         m_rebufferCounter = 0;
         m_bufferEvent = EventId();
         m_sendEvent = EventId();
-        m_recvSeq = 0;
+        m_expectedSeq = 0;
         m_retransPktSize = 100;
+        m_frameFront = 0;
+        m_frameBufferSize = 0;
     }
 
     VideoStreamClient::~VideoStreamClient()
@@ -203,64 +204,40 @@ namespace ns3
             m_retransBuffer.pop();
             seqTs.SetSeq(retransSeq);
 
-            // 패킷에 seq header 붙이기
+            // 패킷에 seq header 붙이기 + 전송
             retransRequestPacket->AddHeader(seqTs);
             m_socket->Send(retransRequestPacket);
-
+            // retransBuffer가 비어있지 않는 경우 retrans 다시 진행
             if (!m_retransBuffer.empty())
-            {
                 m_retransEvent = Simulator::Schedule(MilliSeconds(1.0), &VideoStreamClient::SendRetransRequest, this);
-            }
         }
     }
 
     uint32_t
     VideoStreamClient::ReadFromBuffer(void)
     {
-        // NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds () << " s, last buffer size: " << m_lastBufferSize << ", current buffer size: " << m_currentBufferSize);
-        // 재생되고 있는 frame 보다 현재 buffer에 보유중인 프레임 수가 더 작은 경우
-        if (m_currentBufferSize < m_frameRate)
+        if (m_frameBufferSize < m_frameRate)
         {
-            // m_lastBufferSize = 이전 시퀀스 에서의 bufferSize
-            // m_currentBufferSize = 현재 시퀀스 에서의 bufferSize => 이 둘이 같다는 이야기는 시퀀스가 지났음에도 buffer에 누직된 프레임이 소비 되지 않았음을 의미
-            if (m_lastBufferSize == m_currentBufferSize)
-            {
-                m_stopCounter++;
-                // If the counter reaches 3, which means the client has been waiting for 3 sec, and no packets arrived.
-                // In this case, we think the video streaming has finished, and there is no need to schedule the event.
-                if (m_stopCounter < 3)
-                {
-                    m_bufferEvent = Simulator::Schedule(Seconds(1.0), &VideoStreamClient::ReadFromBuffer, this);
-                }
-            }
-            else
-            {
-                NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " s: Not enough frames in the buffer, rebuffering!");
-                m_stopCounter = 0; // reset the stopCounter
-                m_rebufferCounter++;
-                m_bufferEvent = Simulator::Schedule(Seconds(1.0), &VideoStreamClient::ReadFromBuffer, this);
-            }
-
-            m_lastBufferSize = m_currentBufferSize;
-            return (-1);
+            m_bufferEvent = Simulator::Schedule(Seconds(1.0), &VideoStreamClient::ReadFromBuffer, this);
+            return (-1); // not consume frame
         }
-        else
+        else // consume frame
         {
             NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " s: Play video frames from the buffer");
-            if (m_stopCounter > 0)
-                m_stopCounter = 0; // reset the stopCounter
-            if (m_rebufferCounter > 0)
-                m_rebufferCounter = 0; // reset the rebufferCounter
-            m_currentBufferSize -= m_frameRate;
 
+            for (uint32_t i = m_frameFront; i < m_frameFront + m_frameRate; i++)
+            {
+                NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " s: video frame #" << i << " sized as " << m_frameBuffer[i] << "bytes is consumed");
+                m_frameBuffer[i] = 0; // i번재 프레임 소비
+            }
+            m_frameFront = m_frameFront + m_frameRate; // 사용가능한 프레임의 포인터인덱스 값 조정
+            m_frameBufferSize -= m_frameRate;          // 소비된 만큼 프레임 버퍼에 저장된 사이즈 줄이기
             m_bufferEvent = Simulator::Schedule(Seconds(1.0), &VideoStreamClient::ReadFromBuffer, this);
-            m_lastBufferSize = m_currentBufferSize;
-            return (m_currentBufferSize);
+            return (m_frameBufferSize);
         }
     }
 
-    void
-    VideoStreamClient::HandleRead(Ptr<Socket> socket)
+    void VideoStreamClient::HandleRead(Ptr<Socket> socket)
     {
         NS_LOG_FUNCTION(this << socket);
 
@@ -283,10 +260,27 @@ namespace ns3
                 seqNum = seqTs.GetSeq();
                 frameNum = seqNum / m_pktsPerFrame;
 
-                // seq가 연속인 경우
-                if (m_recvSeq == seqNum)
+                if (m_expectedSeq >= seqNum)
                 {
-                    m_recvSeq++;
+                    // seq가 연속인 경우
+                    if (m_expectedSeq == seqNum)
+                        m_expectedSeq++;
+                    // seq가 불연속 인 경우(일부 손실된 경우) => 재전송 요청 보내주기
+                    else
+                    {
+                        if (seqNum > m_expectedSeq)
+                        {
+                            // t = [m_expectedSeq ~ seqNum - 1]번까지 재전송 요청
+                            // m_retransBuffer에 t들을 넣는다
+                            for (uint32_t i = m_expectedSeq; i < seqNum; i++)
+                                m_retransBuffer.push(i);
+                            // m_retransEvent에 SendRetrans(void) 이벤트를 트리거
+                            m_retransEvent = Simulator::Schedule(MilliSeconds(1.0), &VideoStreamClient::SendRetransRequest, this);
+                        }
+                        // m_expectedSeq 변경 후 m_frameSize 변경
+                        m_expectedSeq = seqNum + 1;
+                    }
+                    // frame번호에 따라 packet 사이즈 갱신
                     if (frameNum == m_lastRecvFrame)
                     {
                         // 이전에 받은 패킷의 프레임 번호와 동일한 프레임 번호의 패킷인 경우 => 받은 frame의 크기를 증가 시킨다.
@@ -295,43 +289,21 @@ namespace ns3
                     else
                     {
                         // 새로운 프레임 번호
-                        NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client received frame " << frameNum + 1 << " and " << m_frameSize << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort());
-                        m_currentBufferSize++;      // frame 한개 추가
-                        m_lastRecvFrame = frameNum; // frame번호 갱신
-                        m_frameSize = packet->GetSize();
+                        m_frameBuffer[m_lastRecvFrame] = m_frameSize; // 누적된 프레임 등록
+                        NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client received frame " << m_lastRecvFrame << " and " << m_frameSize << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort());
+                        m_frameBufferSize++;             // frmaeBuffer에 저장된 프레임개수 증가
+                        m_frameBack++;                   // m_frameBack 증가
+                        m_lastRecvFrame = frameNum;      // frame번호 갱신
+                        m_frameSize = packet->GetSize(); // m_frameSize 갱신
                     }
                 }
                 else
                 {
-                    // 일부 와야될 패킷이 버려진 경우 => 버려진 패킷들에 대해서 재전송 요청
-                    if (seqNum > m_recvSeq)
+                    // 재전송요청 이후 들어온 패킷인 경우 => 1) 소비되지 않은 프레임인 경우 => 프레임사이즈에 추가 | 2) 이미 소비된 프레임인 경우 => 무시
+                    if (m_frameBuffer[frameNum] > 0)
                     {
-                        // t = [m_recvSeq ~ seqNum - 1]번까지 재전송 요청
-                        // m_retransBuffer에 t들을 넣는다
-                        for (uint i = m_recvSeq; i < seqNum; i++)
-                        {
-                            m_retransBuffer.push(i);
-                        }
-                        // m_retransEvent에 SendRetrans(void) 이벤트를 트리거
-                        m_retransEvent = Simulator::Schedule(MilliSeconds(1.0), &VideoStreamClient::SendRetransRequest, this);
-                        // m_recvSeq 변경 후 m_frameSize 변경
-                        m_recvSeq = seqNum + 1;
-                        if (frameNum == m_lastRecvFrame)
-                        {
-                            // 이전에 받은 패킷의 프레임 번호와 동일한 프레임 번호의 패킷인 경우 => 받은 frame의 크기를 증가 시킨다.
-                            m_frameSize += packet->GetSize();
-                        }
-                        else
-                        {
-                            // 새로운 프레임 번호
-                            NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client received frame " << frameNum + 1 << " and " << m_frameSize << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort());
-                            m_currentBufferSize++;      // frame 한개 추가
-                            m_lastRecvFrame = frameNum; // frame번호 갱신
-                            m_frameSize = packet->GetSize();
-                        }
+                        m_frameBuffer[frameNum] += packet->GetSize();
                     }
-                    // seqNum < m_recvSeq => 재전송 요청했던 패킷이 도착한 경우 => Consume되지 않은 무시
-                    //
                 }
             }
         }
