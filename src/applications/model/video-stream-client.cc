@@ -41,8 +41,8 @@ namespace ns3
                                               MakeUintegerChecker<uint16_t>())
                                 .AddAttribute("PacketsPerFrame", "The number of packets per frame",
                                               UintegerValue(2831),
-                                              MakeUintegerAccessor(&VideoStreamClient::m_pktsPerFrame)
-                                                  MakeUintegerChecker<uint32_t>());
+                                              MakeUintegerAccessor(&VideoStreamClient::m_pktsPerFrame),
+                                              MakeUintegerChecker<uint32_t>());
         return tid;
     }
 
@@ -55,7 +55,7 @@ namespace ns3
         m_frameRate = 25;
         m_videoLevel = 3;
         m_stopCounter = 0;
-        m_lastRecvFrame = 1e6;
+        m_lastRecvFrame = 0;
         m_rebufferCounter = 0;
         m_bufferEvent = EventId();
         m_sendEvent = EventId();
@@ -167,9 +167,9 @@ namespace ns3
         NS_ASSERT(m_sendEvent.IsExpired());
 
         // Server와 Connection을 위해 사용
-        uint8_t dataBuffer[10];
-        sprintf((char *)dataBuffer, "%hu", 0);
-        Ptr<Packet> firstPacket = Create<Packet>(dataBuffer, 10);
+        // uint8_t dataBuffer[10];
+        // sprintf((char *)dataBuffer, "%hu", 0);
+        Ptr<Packet> firstPacket = Create<Packet>(10);
         m_socket->Send(firstPacket);
 
         if (Ipv4Address::IsMatchingType(m_peerAddress))
@@ -249,19 +249,18 @@ namespace ns3
             socket->GetSockName(localAddress);
             if (InetSocketAddress::IsMatchingType(from))
             {
-                uint8_t recvData[packet->GetSize()];
-                packet->CopyData(recvData, packet->GetSize());
                 uint32_t seqNum;   // 패킷 내 몇번째 패킷인지 담는 변수(seq)
                 uint32_t frameNum; // 현재 받고 있는 패킷이 속한 프레임의 번호 (seq 번호로 부터 추출)
                 SeqTsHeader seqTs;
-
-                // sscanf((char *)recvData, "%u", &frameNum);
                 packet->RemoveHeader(seqTs);
                 seqNum = seqTs.GetSeq();
                 frameNum = seqNum / m_pktsPerFrame;
 
+                // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client received a packet");
+
                 if (m_expectedSeq >= seqNum)
                 {
+                    // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
                     // seq가 연속인 경우
                     if (m_expectedSeq == seqNum)
                         m_expectedSeq++;
@@ -280,19 +279,22 @@ namespace ns3
                         // m_expectedSeq 변경 후 m_frameSize 변경
                         m_expectedSeq = seqNum + 1;
                     }
+
+                    // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
+                    // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " frameNum : " << frameNum << " lastRecvFrame : " << m_lastRecvFrame);
                     // frame번호에 따라 packet 사이즈 갱신
                     if (frameNum == m_lastRecvFrame)
                     {
                         // 이전에 받은 패킷의 프레임 번호와 동일한 프레임 번호의 패킷인 경우 => 받은 frame의 크기를 증가 시킨다.
                         m_frameSize += packet->GetSize();
+                        // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " m_frameSize : " << m_frameSize);
                     }
                     else
                     {
                         // 새로운 프레임 번호
                         m_frameBuffer[m_lastRecvFrame] = m_frameSize; // 누적된 프레임 등록
-                        NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client received frame " << m_lastRecvFrame << " and " << m_frameSize << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort());
+                        // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client received frame " << m_lastRecvFrame << " and " << m_frameSize << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort());
                         m_frameBufferSize++;             // frmaeBuffer에 저장된 프레임개수 증가
-                        m_frameBack++;                   // m_frameBack 증가
                         m_lastRecvFrame = frameNum;      // frame번호 갱신
                         m_frameSize = packet->GetSize(); // m_frameSize 갱신
                     }
