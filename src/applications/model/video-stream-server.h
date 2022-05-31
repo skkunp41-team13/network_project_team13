@@ -87,6 +87,7 @@ namespace ns3 {
         uint16_t m_port; //!< The port 
         Address m_local; //!< Local multicast address
 
+        uint32_t m_packetNum;
         uint32_t m_nextSeqNum;
         uint32_t m_waitingSeqNum;
         uint32_t* m_sendQueue; // send buffer
