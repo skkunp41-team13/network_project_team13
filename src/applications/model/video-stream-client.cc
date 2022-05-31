@@ -40,7 +40,7 @@ namespace ns3
                                               MakeUintegerAccessor(&VideoStreamClient::m_peerPort),
                                               MakeUintegerChecker<uint16_t>())
                                 .AddAttribute("PacketsPerFrame", "The number of packets per frame",
-                                              UintegerValue(2831),
+                                              UintegerValue(100),
                                               MakeUintegerAccessor(&VideoStreamClient::m_pktsPerFrame),
                                               MakeUintegerChecker<uint32_t>());
         return tid;
@@ -139,7 +139,6 @@ namespace ns3
                 NS_ASSERT_MSG(false, "Incompatible address type: " << m_peerAddress);
             }
         }
-
         m_socket->SetRecvCallback(MakeCallback(&VideoStreamClient::HandleRead, this));
         m_sendEvent = Simulator::Schedule(MilliSeconds(1.0), &VideoStreamClient::Send, this);
         m_bufferEvent = Simulator::Schedule(Seconds(m_initialDelay), &VideoStreamClient::ReadFromBuffer, this);
@@ -252,11 +251,13 @@ namespace ns3
             {
                 uint32_t seqNum;   // 패킷 내 몇번째 패킷인지 담는 변수(seq)
                 uint32_t frameNum; // 현재 받고 있는 패킷이 속한 프레임의 번호 (seq 번호로 부터 추출)
+                uint32_t pktSize = packet->GetSize();
                 SeqTsHeader seqTs;
                 packet->RemoveHeader(seqTs);
                 seqNum = seqTs.GetSeq();
                 frameNum = seqNum / m_pktsPerFrame;
 
+                // NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum);
                 NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
                 if (m_expectedSeq <= seqNum)
                 {
@@ -284,7 +285,7 @@ namespace ns3
                     if (frameNum == m_lastRecvFrame)
                     {
                         // 이전에 받은 패킷의 프레임 번호와 동일한 프레임 번호의 패킷인 경우 => 받은 frame의 크기를 증가 시킨다.
-                        m_frameSize += packet->GetSize();
+                        m_frameSize += pktSize;
                     }
                     else
                     {
@@ -293,7 +294,7 @@ namespace ns3
                         m_frameBuffer[m_lastRecvFrame] = m_frameSize; // 누적된 프레임 등록
                         m_frameBufferSize++;                          // frmaeBuffer에 저장된 프레임개수 증가
                         m_lastRecvFrame = frameNum;                   // frame번호 갱신
-                        m_frameSize = packet->GetSize();              // m_frameSize 갱신
+                        m_frameSize = pktSize;                        // m_frameSize 갱신
                     }
                 }
                 else

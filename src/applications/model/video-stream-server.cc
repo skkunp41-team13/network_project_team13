@@ -17,32 +17,32 @@
 #include "seq-ts-header.h"
 #include "ns3/video-stream-server.h"
 
-namespace ns3 {
+namespace ns3
+{
 
     NS_LOG_COMPONENT_DEFINE("VideoStreamServerApplication");
 
     NS_OBJECT_ENSURE_REGISTERED(VideoStreamServer);
 
     TypeId
-        VideoStreamServer::GetTypeId(void)
+    VideoStreamServer::GetTypeId(void)
     {
         static TypeId tid = TypeId("ns3::VideoStreamServer")
-            .SetParent<Application>()
-            .SetGroupName("Applications")
-            .AddConstructor<VideoStreamServer>()
-            .AddAttribute("Interval", "The time to wait between packets",
-                TimeValue(Seconds(0.01)),
-                MakeTimeAccessor(&VideoStreamServer::m_interval),
-                MakeTimeChecker())
-            .AddAttribute("Port", "Port on which we listen for incoming packets.",
-                UintegerValue(5000),
-                MakeUintegerAccessor(&VideoStreamServer::m_port),
-                MakeUintegerChecker<uint16_t>())
-            .AddAttribute("MaxPacketSize", "The maximum size of a packet",
-                UintegerValue(1400),
-                MakeUintegerAccessor(&VideoStreamServer::m_maxPacketSize),
-                MakeUintegerChecker<uint16_t>())
-            ;
+                                .SetParent<Application>()
+                                .SetGroupName("Applications")
+                                .AddConstructor<VideoStreamServer>()
+                                .AddAttribute("Interval", "The time to wait between packets",
+                                              TimeValue(Seconds(0.01)),
+                                              MakeTimeAccessor(&VideoStreamServer::m_interval),
+                                              MakeTimeChecker())
+                                .AddAttribute("Port", "Port on which we listen for incoming packets.",
+                                              UintegerValue(5000),
+                                              MakeUintegerAccessor(&VideoStreamServer::m_port),
+                                              MakeUintegerChecker<uint16_t>())
+                                .AddAttribute("MaxPacketSize", "The maximum size of a packet",
+                                              UintegerValue(1400),
+                                              MakeUintegerAccessor(&VideoStreamServer::m_maxPacketSize),
+                                              MakeUintegerChecker<uint16_t>());
         return tid;
     }
 
@@ -66,14 +66,14 @@ namespace ns3 {
     }
 
     void
-        VideoStreamServer::DoDispose(void)
+    VideoStreamServer::DoDispose(void)
     {
         NS_LOG_FUNCTION(this);
         Application::DoDispose();
     }
 
     void
-        VideoStreamServer::StartApplication(void)
+    VideoStreamServer::StartApplication(void)
     {
         NS_LOG_FUNCTION(this);
 
@@ -105,10 +105,9 @@ namespace ns3 {
     }
 
     void
-        VideoStreamServer::StopApplication()
+    VideoStreamServer::StopApplication()
     {
         NS_LOG_FUNCTION(this);
-
 
         if (m_socket != 0)
         {
@@ -121,33 +120,22 @@ namespace ns3 {
         {
             Simulator::Cancel(iter->second->m_sendEvent);
         }
-
     }
 
     // Send Frame
     void
-        VideoStreamServer::Send(uint32_t ipAddress)
+    VideoStreamServer::Send(uint32_t ipAddress)
     {
         NS_LOG_FUNCTION(this);
 
-        uint32_t frameSize = 1400 * 2830 + 1000;
+        uint32_t frameSize = 1400 * 99 + 1000;
         uint32_t totalFrames = 60 * 25;
-        ClientInfo* clientInfo = m_clients.at(ipAddress);
+        ClientInfo *clientInfo = m_clients.at(ipAddress);
 
         NS_ASSERT(clientInfo->m_sendEvent.IsExpired());
-        
-        // «¡∑π¿”¿ª ∆–≈∂≈©±‚∑Œ ¿ﬂ∂Ûº≠ ¿¸º€, 
-        /*
-		for (uint i = 0; i < frameSize / m_maxPacketSize; i++)
-        {
-			SendPacket(clientInfo, m_maxPacketSize);
-        }
-		*/
-        // «¡∑π¿”ø° ≥≤¿∫ ≈©±‚ (1000byte) ¿¸º€
         uint32_t remainder = frameSize % m_maxPacketSize;
-        //SendPacket(clientInfo, remainder);
-		
-		while (m_nextSeqNum < (clientInfo->m_sent + 1) * (frameSize / m_maxPacketSize) + 1)
+
+        while (m_nextSeqNum < (clientInfo->m_sent + 1) * (frameSize / m_maxPacketSize) + 1)
         {
             SendPacket(clientInfo, m_maxPacketSize);
 
@@ -159,7 +147,7 @@ namespace ns3 {
 
         NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s server sent frame " << clientInfo->m_sent << " and " << frameSize << " bytes to " << InetSocketAddress::ConvertFrom(clientInfo->m_address).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(clientInfo->m_address).GetPort());
 
-        clientInfo->m_sent += 1; // ∫∏≥Ω «¡∑π¿” ∞≥ºˆ ¡ı∞°
+        clientInfo->m_sent += 1; // ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ
         if (clientInfo->m_sent < totalFrames)
         {
             clientInfo->m_sendEvent = Simulator::Schedule(m_interval, &VideoStreamServer::Send, this, ipAddress);
@@ -167,25 +155,25 @@ namespace ns3 {
     }
 
     void
-        VideoStreamServer::SendPacket(ClientInfo* client, uint32_t packetSize)
+    VideoStreamServer::SendPacket(ClientInfo *client, uint32_t packetSize)
     {
         uint8_t dataBuffer[packetSize];
-        sprintf((char*)dataBuffer, "%u", client->m_sent);
+        sprintf((char *)dataBuffer, "%u", client->m_sent);
         Ptr<Packet> p = Create<Packet>(dataBuffer, packetSize);
         uint32_t seqNum = GetSeqNum();
         SeqTsHeader seqTs;
         seqTs.SetSeq(seqNum);
         p->AddHeader(seqTs);
-        //m_txTrace(p);
+        // m_txTrace(p);
         NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s server sent packet # " << seqNum);
-		if (m_socket->SendTo(p, 0, client->m_address) < 0)
+        if (m_socket->SendTo(p, 0, client->m_address) < 0)
         {
             NS_LOG_INFO("Error while sending " << packetSize << "bytes to " << InetSocketAddress::ConvertFrom(client->m_address).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(client->m_address).GetPort());
         }
     }
 
     void
-        VideoStreamServer::HandleRead(Ptr<Socket> socket)
+    VideoStreamServer::HandleRead(Ptr<Socket> socket)
     {
         NS_LOG_FUNCTION(this << socket);
 
@@ -196,45 +184,43 @@ namespace ns3 {
         uint32_t seqNum;
         while ((packet = socket->RecvFrom(from)))
         {
-			socket->GetSockName(localAddress);
+            socket->GetSockName(localAddress);
             if (packet->GetSize() > 10)
-			{
-			packet->RemoveHeader(seqTs);
-            seqNum = seqTs.GetSeq();
+            {
+                packet->RemoveHeader(seqTs);
+                seqNum = seqTs.GetSeq();
             }
-			if (InetSocketAddress::IsMatchingType(from))
+            if (InetSocketAddress::IsMatchingType(from))
             {
                 NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s server received " << packet->GetSize() << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " seq " << seqNum);
 
-			uint32_t ipAddr = InetSocketAddress::ConvertFrom (from).GetIpv4 ().Get ();
+                uint32_t ipAddr = InetSocketAddress::ConvertFrom(from).GetIpv4().Get();
 
-      // the first time we received the message from the client
-      if (m_clients.find (ipAddr) == m_clients.end ())
-      {
-        ClientInfo *newClient = new ClientInfo();
-        newClient->m_sent = 0;
-       // newClient->m_videoLevel = 3;
-        newClient->m_address = from;
-        // newClient->m_sendEvent = EventId ();
-        m_clients[ipAddr] = newClient;
-        newClient->m_sendEvent = Simulator::Schedule (Seconds (0.0), &VideoStreamServer::Send, this, ipAddr);
-      }
-
-
+                // the first time we received the message from the client
+                if (m_clients.find(ipAddr) == m_clients.end())
+                {
+                    ClientInfo *newClient = new ClientInfo();
+                    newClient->m_sent = 0;
+                    // newClient->m_videoLevel = 3;
+                    newClient->m_address = from;
+                    // newClient->m_sendEvent = EventId ();
+                    m_clients[ipAddr] = newClient;
+                    newClient->m_sendEvent = Simulator::Schedule(Seconds(0.0), &VideoStreamServer::Send, this, ipAddr);
+                }
             }
             if (packet->GetSize() > 10)
-	        {
-			AddAckSeqNum(seqNum);
-			socket->GetSockName(localAddress);
+            {
+                AddAckSeqNum(seqNum);
+                socket->GetSockName(localAddress);
             }
-			//m_rxTrace(packet);
-            //m_rxTraceWithAddresses(packet, from, localAddress);
+            // m_rxTrace(packet);
+            // m_rxTraceWithAddresses(packet, from, localAddress);
         }
     }
 
-    //get next sequence number
+    // get next sequence number
     uint32_t
-        VideoStreamServer::GetSeqNum(void)
+    VideoStreamServer::GetSeqNum(void)
     {
         uint32_t seqNum;
         if (m_sendQueueFront != m_sendQueueBack)
@@ -254,13 +240,13 @@ namespace ns3 {
         return seqNum;
     }
 
-	void
-        VideoStreamServer::AddAckSeqNum(uint32_t seqNum)
+    void
+    VideoStreamServer::AddAckSeqNum(uint32_t seqNum)
     {
         if ((m_sendQueueBack + 1) % m_sendQueueSize == m_sendQueueFront)
         {
             NS_LOG_INFO("Queue over flow");
-            //break;
+            // break;
         }
         else
         {
@@ -271,39 +257,4 @@ namespace ns3 {
             }
         }
     }
-/*
-    void
-        VideoStreamServer::AddAckSeqNum(uint32_t seqNum)
-    {
-        if (seqNum < m_waitingSeqNum)
-        {
-            NS_LOG_INFO("Receive Retrans Packet: " << seqNum);
-        }
-        else if (seqNum == m_waitingSeqNum)
-        {
-            ++m_waitingSeqNum;
-        }
-        else
-        {
-            NS_LOG_INFO("Packet Loss: " << m_waitingSeqNum);
-            for (uint32_t i = m_waitingSeqNum; i < seqNum; ++i)
-            {
-                if ((m_sendQueueBack + 1) % m_sendQueueSize == m_sendQueueFront)
-                {
-                    NS_LOG_INFO("Queue over flow");
-                    break;
-                }
-                else
-                {
-                    m_sendQueue[m_sendQueueBack++] = i;
-                    if (m_sendQueueBack == m_sendQueueSize)
-                    {
-                        m_sendQueueBack = 0;
-                    }
-                }
-            }
-            m_waitingSeqNum = seqNum + 1;
-        }
-    }
-*/
 } // namespace ns3
