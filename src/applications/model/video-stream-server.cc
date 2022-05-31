@@ -177,7 +177,8 @@ namespace ns3 {
         seqTs.SetSeq(seqNum);
         p->AddHeader(seqTs);
         //m_txTrace(p);
-        if (m_socket->SendTo(p, 0, client->m_address) < 0)
+        NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s server sent packet # " << seqNum);
+		if (m_socket->SendTo(p, 0, client->m_address) < 0)
         {
             NS_LOG_INFO("Error while sending " << packetSize << "bytes to " << InetSocketAddress::ConvertFrom(client->m_address).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(client->m_address).GetPort());
         }
@@ -224,7 +225,7 @@ namespace ns3 {
             if (packet->GetSize() > 10)
 	        {
 			AddAckSeqNum(seqNum);
-            socket->GetSockName(localAddress);
+			socket->GetSockName(localAddress);
             }
 			//m_rxTrace(packet);
             //m_rxTraceWithAddresses(packet, from, localAddress);
@@ -253,6 +254,24 @@ namespace ns3 {
         return seqNum;
     }
 
+	void
+        VideoStreamServer::AddAckSeqNum(uint32_t seqNum)
+    {
+        if ((m_sendQueueBack + 1) % m_sendQueueSize == m_sendQueueFront)
+        {
+            NS_LOG_INFO("Queue over flow");
+            //break;
+        }
+        else
+        {
+            m_sendQueue[m_sendQueueBack++] = seqNum;
+            if (m_sendQueueBack == m_sendQueueSize)
+            {
+                m_sendQueueBack = 0;
+            }
+        }
+    }
+/*
     void
         VideoStreamServer::AddAckSeqNum(uint32_t seqNum)
     {
@@ -286,5 +305,5 @@ namespace ns3 {
             m_waitingSeqNum = seqNum + 1;
         }
     }
-
+*/
 } // namespace ns3
