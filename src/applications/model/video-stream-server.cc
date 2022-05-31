@@ -139,7 +139,7 @@ namespace ns3 {
         // 프레임을 패킷크기로 잘라서 전송, 
         for (uint i = 0; i < frameSize / m_maxPacketSize; i++)
         {
-            SendPacket(clientInfo, m_maxPacketSize);
+			SendPacket(clientInfo, m_maxPacketSize);
         }
         // 프레임에 남은 크기 (1000byte) 전송
         uint32_t remainder = frameSize % m_maxPacketSize;
@@ -183,17 +183,38 @@ namespace ns3 {
         uint32_t seqNum;
         while ((packet = socket->RecvFrom(from)))
         {
-            socket->GetSockName(localAddress);
-            packet->RemoveHeader(seqTs);
+			socket->GetSockName(localAddress);
+            if (packet->GetSize() > 10)
+			{
+			packet->RemoveHeader(seqTs);
             seqNum = seqTs.GetSeq();
-            if (InetSocketAddress::IsMatchingType(from))
+            }
+			if (InetSocketAddress::IsMatchingType(from))
             {
                 NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s server received " << packet->GetSize() << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort() << " seq " << seqNum);
 
+			uint32_t ipAddr = InetSocketAddress::ConvertFrom (from).GetIpv4 ().Get ();
+
+      // the first time we received the message from the client
+      if (m_clients.find (ipAddr) == m_clients.end ())
+      {
+        ClientInfo *newClient = new ClientInfo();
+        newClient->m_sent = 0;
+       // newClient->m_videoLevel = 3;
+        newClient->m_address = from;
+        // newClient->m_sendEvent = EventId ();
+        m_clients[ipAddr] = newClient;
+        newClient->m_sendEvent = Simulator::Schedule (Seconds (0.0), &VideoStreamServer::Send, this, ipAddr);
+      }
+
+
             }
-            AddAckSeqNum(seqNum);
+            if (packet->GetSize() > 10)
+	        {
+			AddAckSeqNum(seqNum);
             socket->GetSockName(localAddress);
-            //m_rxTrace(packet);
+            }
+			//m_rxTrace(packet);
             //m_rxTraceWithAddresses(packet, from, localAddress);
         }
     }
