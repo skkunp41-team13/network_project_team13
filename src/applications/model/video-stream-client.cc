@@ -218,7 +218,7 @@ namespace ns3
     {
         if (m_frameBufferSize < m_frameRate)
         {
-            // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " not enough frames to consume (frameNumber : " << m_frameBufferSize << ")");
+            NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " not enough frames to consume (frameNumber : " << m_frameBufferSize << ")");
             m_bufferEvent = Simulator::Schedule(Seconds(1.0), &VideoStreamClient::ReadFromBuffer, this);
             return (-1); // not consume frame
         }
@@ -228,7 +228,7 @@ namespace ns3
 
             for (uint32_t i = m_frameFront; i < m_frameFront + m_frameRate; i++)
             {
-                // NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " s: video frame #" << i << " sized as " << m_frameBuffer[i] << "bytes is consumed");
+                NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " s: video frame #" << i << " sized as " << m_frameBuffer[i] << "bytes is consumed");
                 m_frameBuffer[i] = 0; // i번재 프레임 소비
             }
             m_frameFront = m_frameFront + m_frameRate; // 사용가능한 프레임의 포인터인덱스 값 조정
@@ -257,9 +257,9 @@ namespace ns3
                 seqNum = seqTs.GetSeq();
                 frameNum = seqNum / m_pktsPerFrame;
 
+                NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
                 if (m_expectedSeq <= seqNum)
                 {
-                    NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
                     // seq가 연속인 경우
                     if (m_expectedSeq == seqNum)
                     {
@@ -289,6 +289,7 @@ namespace ns3
                     else
                     {
                         // 새로운 프레임 번호
+                        NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << " new frame is saved : " << m_lastRecvFrame);
                         m_frameBuffer[m_lastRecvFrame] = m_frameSize; // 누적된 프레임 등록
                         m_frameBufferSize++;                          // frmaeBuffer에 저장된 프레임개수 증가
                         m_lastRecvFrame = frameNum;                   // frame번호 갱신
