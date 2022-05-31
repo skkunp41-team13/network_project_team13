@@ -137,13 +137,25 @@ namespace ns3 {
         NS_ASSERT(clientInfo->m_sendEvent.IsExpired());
         
         // 프레임을 패킷크기로 잘라서 전송, 
-        for (uint i = 0; i < frameSize / m_maxPacketSize; i++)
+        /*
+		for (uint i = 0; i < frameSize / m_maxPacketSize; i++)
         {
 			SendPacket(clientInfo, m_maxPacketSize);
         }
+		*/
         // 프레임에 남은 크기 (1000byte) 전송
         uint32_t remainder = frameSize % m_maxPacketSize;
-        SendPacket(clientInfo, remainder);
+        //SendPacket(clientInfo, remainder);
+		
+		while (m_nextSeqNum < (clientInfo->m_sent + 1) * 50)
+        {
+            SendPacket(clientInfo, m_maxPacketSize);
+
+            if (m_nextSeqNum == (clientInfo->m_sent + 1) * 50 - 1)
+            {
+                SendPacket(clientInfo, remainder);
+            }
+        }
 
         NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s server sent frame " << clientInfo->m_sent << " and " << frameSize << " bytes to " << InetSocketAddress::ConvertFrom(clientInfo->m_address).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(clientInfo->m_address).GetPort());
 
