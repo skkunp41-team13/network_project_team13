@@ -147,11 +147,11 @@ namespace ns3 {
         uint32_t remainder = frameSize % m_maxPacketSize;
         //SendPacket(clientInfo, remainder);
 		
-		while (m_nextSeqNum < (clientInfo->m_sent + 1) * 50)
+		while (m_nextSeqNum < (clientInfo->m_sent + 1) * (frameSize / m_maxPacketSize) + 1)
         {
             SendPacket(clientInfo, m_maxPacketSize);
 
-            if (m_nextSeqNum == (clientInfo->m_sent + 1) * 50 - 1)
+            if (m_nextSeqNum == (clientInfo->m_sent + 1) * (frameSize / m_maxPacketSize))
             {
                 SendPacket(clientInfo, remainder);
             }
