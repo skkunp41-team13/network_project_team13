@@ -41,8 +41,8 @@ namespace ns3
                                               MakeUintegerChecker<uint16_t>())
                                 .AddAttribute("PacketsPerFrame", "The number of packets per frame",
                                               UintegerValue(2831),
-                                              MakeUintegerAccessor(&VideoStreamClient::m_pktsPerFrame)
-                                                  MakeUintegerChecker<uint32_t>());
+                                              MakeUintegerAccessor(&VideoStreamClient::m_pktsPerFrame),
+                                              MakeUintegerChecker<uint32_t>());
         return tid;
     }
 
@@ -292,7 +292,6 @@ namespace ns3
                         m_frameBuffer[m_lastRecvFrame] = m_frameSize; // 누적된 프레임 등록
                         NS_LOG_INFO("At time " << Simulator::Now().GetSeconds() << "s client received frame " << m_lastRecvFrame << " and " << m_frameSize << " bytes from " << InetSocketAddress::ConvertFrom(from).GetIpv4() << " port " << InetSocketAddress::ConvertFrom(from).GetPort());
                         m_frameBufferSize++;             // frmaeBuffer에 저장된 프레임개수 증가
-                        m_frameBack++;                   // m_frameBack 증가
                         m_lastRecvFrame = frameNum;      // frame번호 갱신
                         m_frameSize = packet->GetSize(); // m_frameSize 갱신
                     }
