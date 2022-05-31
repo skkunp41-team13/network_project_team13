@@ -39,9 +39,9 @@ namespace ns3
                                               UintegerValue(5000),
                                               MakeUintegerAccessor(&VideoStreamClient::m_peerPort),
                                               MakeUintegerChecker<uint16_t>())
-                                .AddAttribute("PacketsPerFrame", "The number of packets per frame",
+                                .AddAttribute("PacketNum", "The number of packets per frame",
                                               UintegerValue(100),
-                                              MakeUintegerAccessor(&VideoStreamClient::m_pktsPerFrame),
+                                              MakeUintegerAccessor(&VideoStreamClient::m_packetNum),
                                               MakeUintegerChecker<uint32_t>());
         return tid;
     }
@@ -270,7 +270,7 @@ namespace ns3
                 SeqTsHeader seqTs;
                 packet->RemoveHeader(seqTs);
                 seqNum = seqTs.GetSeq();
-                frameNum = seqNum / m_pktsPerFrame;
+                frameNum = seqNum / m_packetNum;
 
                 // NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
                 if (m_expectedSeq <= seqNum)

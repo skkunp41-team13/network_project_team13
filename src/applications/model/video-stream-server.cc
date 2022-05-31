@@ -25,28 +25,28 @@ namespace ns3
     NS_OBJECT_ENSURE_REGISTERED(VideoStreamServer);
 
     TypeId
-        VideoStreamServer::GetTypeId(void)
+    VideoStreamServer::GetTypeId(void)
     {
         static TypeId tid = TypeId("ns3::VideoStreamServer")
-            .SetParent<Application>()
-            .SetGroupName("Applications")
-            .AddConstructor<VideoStreamServer>()
-            .AddAttribute("Interval", "The time to wait between packets",
-                TimeValue(Seconds(0.01)),
-                MakeTimeAccessor(&VideoStreamServer::m_interval),
-                MakeTimeChecker())
-            .AddAttribute("Port", "Port on which we listen for incoming packets.",
-                UintegerValue(5000),
-                MakeUintegerAccessor(&VideoStreamServer::m_port),
-                MakeUintegerChecker<uint16_t>())
-            .AddAttribute("MaxPacketSize", "The maximum size of a packet",
-                UintegerValue(1400),
-                MakeUintegerAccessor(&VideoStreamServer::m_maxPacketSize),
-                MakeUintegerChecker<uint16_t>());
-            .AddAttribute("PacketNum", "The number of packet in each frame",
-                UintegerValue(100),
-                MakeUintegerAccessor(&VideoStreamServer::m_packetNum),
-                MakeUintegerChecker<uint16_t>());
+                                .SetParent<Application>()
+                                .SetGroupName("Applications")
+                                .AddConstructor<VideoStreamServer>()
+                                .AddAttribute("Interval", "The time to wait between packets",
+                                              TimeValue(Seconds(0.01)),
+                                              MakeTimeAccessor(&VideoStreamServer::m_interval),
+                                              MakeTimeChecker())
+                                .AddAttribute("Port", "Port on which we listen for incoming packets.",
+                                              UintegerValue(5000),
+                                              MakeUintegerAccessor(&VideoStreamServer::m_port),
+                                              MakeUintegerChecker<uint16_t>())
+                                .AddAttribute("MaxPacketSize", "The maximum size of a packet",
+                                              UintegerValue(1400),
+                                              MakeUintegerAccessor(&VideoStreamServer::m_maxPacketSize),
+                                              MakeUintegerChecker<uint16_t>())
+                                .AddAttribute("PacketNum", "The number of packet in each frame",
+                                              UintegerValue(100),
+                                              MakeUintegerAccessor(&VideoStreamServer::m_packetNum),
+                                              MakeUintegerChecker<uint16_t>());
         return tid;
     }
 
@@ -70,14 +70,14 @@ namespace ns3
     }
 
     void
-        VideoStreamServer::DoDispose(void)
+    VideoStreamServer::DoDispose(void)
     {
         NS_LOG_FUNCTION(this);
         Application::DoDispose();
     }
 
     void
-        VideoStreamServer::StartApplication(void)
+    VideoStreamServer::StartApplication(void)
     {
         NS_LOG_FUNCTION(this);
 
@@ -109,7 +109,7 @@ namespace ns3
     }
 
     void
-        VideoStreamServer::StopApplication()
+    VideoStreamServer::StopApplication()
     {
         NS_LOG_FUNCTION(this);
 
@@ -128,13 +128,13 @@ namespace ns3
 
     // Send Frame
     void
-        VideoStreamServer::Send(uint32_t ipAddress)
+    VideoStreamServer::Send(uint32_t ipAddress)
     {
         NS_LOG_FUNCTION(this);
 
         uint32_t frameSize = 1400 * (m_packetNum - 1) + 1000;
         uint32_t totalFrames = 60 * 25;
-        ClientInfo* clientInfo = m_clients.at(ipAddress);
+        ClientInfo *clientInfo = m_clients.at(ipAddress);
 
         NS_ASSERT(clientInfo->m_sendEvent.IsExpired());
         uint32_t remainder = frameSize % m_maxPacketSize;
@@ -159,10 +159,10 @@ namespace ns3
     }
 
     void
-        VideoStreamServer::SendPacket(ClientInfo* client, uint32_t packetSize)
+    VideoStreamServer::SendPacket(ClientInfo *client, uint32_t packetSize)
     {
         uint8_t dataBuffer[packetSize];
-        sprintf((char*)dataBuffer, "%u", client->m_sent);
+        sprintf((char *)dataBuffer, "%u", client->m_sent);
         Ptr<Packet> p = Create<Packet>(dataBuffer, packetSize);
         uint32_t seqNum = GetSeqNum();
         SeqTsHeader seqTs;
@@ -177,7 +177,7 @@ namespace ns3
     }
 
     void
-        VideoStreamServer::HandleRead(Ptr<Socket> socket)
+    VideoStreamServer::HandleRead(Ptr<Socket> socket)
     {
         NS_LOG_FUNCTION(this << socket);
 
@@ -203,7 +203,7 @@ namespace ns3
                 // the first time we received the message from the client
                 if (m_clients.find(ipAddr) == m_clients.end())
                 {
-                    ClientInfo* newClient = new ClientInfo();
+                    ClientInfo *newClient = new ClientInfo();
                     newClient->m_sent = 0;
                     // newClient->m_videoLevel = 3;
                     newClient->m_address = from;
@@ -224,7 +224,7 @@ namespace ns3
 
     // get next sequence number
     uint32_t
-        VideoStreamServer::GetSeqNum(void)
+    VideoStreamServer::GetSeqNum(void)
     {
         uint32_t seqNum;
         if (m_sendQueueFront != m_sendQueueBack)
@@ -245,7 +245,7 @@ namespace ns3
     }
 
     void
-        VideoStreamServer::AddAckSeqNum(uint32_t seqNum)
+    VideoStreamServer::AddAckSeqNum(uint32_t seqNum)
     {
         if ((m_sendQueueBack + 1) % m_sendQueueSize == m_sendQueueFront)
         {

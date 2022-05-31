@@ -95,7 +95,7 @@ namespace ns3
     uint32_t m_lastRecvFrame;     //!< Last received frame number
     uint32_t m_currentBufferSize; //!< Size of the frame buffer
 
-    uint32_t m_pktsPerFrame;              // frame당 패킷 개수
+    uint32_t m_packetNum;                 // frame당 패킷 개수
     uint32_t m_expectedSeq;               // 받아야 되는 packet seq 번호 (0부터 시작)
     uint32_t m_retransPktSize;            // 재전송 요청 패킷 사이즈
     std::queue<uint32_t> m_retransBuffer; // 재전송 요청할 seq 번호를 담는 큐
