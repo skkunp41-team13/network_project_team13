@@ -269,7 +269,7 @@ namespace ns3
                 seqNum = seqTs.GetSeq();
                 frameNum = seqNum / m_packetNum;
 
-                // NS_LOG_INFO("[Client] At time " << Simulator::Now().GetSeconds() << " seqNum : " << seqNum << " expectedSeq : " << m_expectedSeq);
+                // 재전송으로 들어온 패킷이 아닌 경우
                 if (m_expectedSeq <= seqNum)
                 {
                     // seq가 연속인 경우
@@ -308,6 +308,7 @@ namespace ns3
                         m_frameSize = pktSize;                        // m_frameSize 갱신
                     }
                 }
+                // 재전송으로 들어온 패킷인 경우
                 else
                 {
                     // 재전송요청 이후 들어온 패킷인 경우 => 1) 소비되지 않은 프레임인 경우 => 프레임사이즈에 추가 | 2) 이미 소비된 프레임인 경우 => 무시
