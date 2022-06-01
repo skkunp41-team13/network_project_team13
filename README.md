@@ -21,7 +21,8 @@ ns-3 (version 3.29), Python, C++ compiler (clang++ or g++)
   (1) p2p link for 1 client and 1 server  
   (2) wifi link for 1 client and 1 server
 
-Run `./waf —run videoStreamer <case> <packets per frame>`
+Run `./waf --run videoStream`.  
+Run `./waf —run "videoStream --case=<case> --pktPerFrame=<packets per frame>"`
 
 ## Result
 #### (1) default(p2p link, 100 packets per frame)
