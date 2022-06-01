@@ -53,10 +53,7 @@ namespace ns3
         m_currentBufferSize = 0;
         m_frameSize = 0;
         m_frameRate = 20;
-        m_videoLevel = 3;
-        m_stopCounter = 0;
         m_lastRecvFrame = 0;
-        m_rebufferCounter = 0;
         m_bufferEvent = EventId();
         m_sendEvent = EventId();
         m_expectedSeq = 0;

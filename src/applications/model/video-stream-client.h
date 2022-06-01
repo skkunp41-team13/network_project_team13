@@ -87,9 +87,6 @@ namespace ns3
     uint16_t m_peerPort;   //!< Remote peer port
 
     uint16_t m_initialDelay;      //!< Seconds to wait before displaying the content
-    uint16_t m_stopCounter;       //!< Counter to decide if the video streaming finishes
-    uint16_t m_rebufferCounter;   //!< Counter of the rebuffering event
-    uint16_t m_videoLevel;        //!< The quality of the video from the server
     uint32_t m_frameRate;         //!< Number of frames per second to be played
     uint32_t m_frameSize;         //!< Total size of packets from one frame
     uint32_t m_lastRecvFrame;     //!< Last received frame number
